@@ -1,0 +1,19 @@
+provider "gandi" {
+  url = "https://rpc.gandi.net/xmlrpc/"
+  key = "gandi-apk-key"
+}
+
+resource "gandi_zone" "example-com" {
+  name = "example.com"
+  auto_promote = true
+  keep_count = 10
+}
+
+# A Record
+resource "gandi_zone_record" "test01" {
+  zoneid = "123456"
+  name = "testa"
+  type = "A"
+  value = "1.1.1.1"
+  ttl = 1000
+}
