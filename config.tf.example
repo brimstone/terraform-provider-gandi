@@ -1,9 +1,21 @@
+# configuration for the provider
+# environment detection based on the value of the testing variable
 provider "gandi" {
-  url = "https://rpc.gandi.net/xmlrpc/"
   key = "gandi-apk-key"
+  testing = true
 }
 
-resource "gandi_zone" "example-com" {
+# resource gandi_domain does not support buying new domains
+# by specifying name here you will populate the id in the tfstate
+resource "gandi_domain" {
+  name = "example.com"
+  zone = "zone-example-com"
+}
+
+
+# every change to the zone will create a new version from the previous one
+# there is count(int64) versions available
+resource "gandi_zone" "zone-example-com" {
   name = "example.com"
   auto_promote = true
   keep_count = 10
@@ -11,7 +23,7 @@ resource "gandi_zone" "example-com" {
 
 # A Record
 resource "gandi_zone_record" "test01" {
-  zoneid = "123456"
+  zone = "zone-example-com"
   name = "testa"
   type = "A"
   value = "1.1.1.1"

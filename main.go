@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/plugin"
 	"github.com/hashicorp/terraform/terraform"
 )
@@ -27,4 +28,12 @@ func main() {
 			return Provider()
 		},
 	})
+}
+
+func providerConfigure(d *schema.ResourceData) (interface{}, error) {
+	config := Config{
+		Key:     d.Get("key").(string),
+		Testing: d.Get("testing").(bool),
+	}
+	return config.Client(), nil
 }

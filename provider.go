@@ -2,10 +2,31 @@ package main
 
 import (
 	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform/terraform"
 )
 
-func Provider() *schema.Provider {
+// Provider returns Gandi Resoruce Provider...
+func Provider() terraform.ResourceProvider {
 	return &schema.Provider{
-		ResourcesMap: map[string]*schema.Resource{},
+		Schema: map[string]*schema.Schema{
+			"key": &schema.Schema{
+				Type:        schema.TypeString,
+				Required:    true,
+				DefaultFunc: schema.EnvDefaultFunc("GANDI_KEY", nil),
+				Description: "A Gandi XMLRPC API Key.",
+			},
+			"testing": &schema.Schema{
+				Type:        schema.TypeBool,
+				Required:    true,
+				DefaultFunc: schema.EnvDefaultFunc("GANDI_TESTING", true),
+				Description: "Set it to use the Test Environment.",
+			},
+		},
+
+		ResourcesMap: map[string]*schema.Resource{
+			"gandi_zone": resourceZone(),
+		},
+
+		ConfigureFunc: providerConfigure,
 	}
 }
