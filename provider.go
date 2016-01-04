@@ -24,7 +24,8 @@ func Provider() terraform.ResourceProvider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"gandi_zone": resourceZone(),
+			"gandi_zone":   resourceZone(),
+			"gandi_record": resourceRecord(),
 		},
 
 		ConfigureFunc: providerConfigure,
