@@ -22,7 +22,6 @@ func resourceRecord() *schema.Resource {
 			"name": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true, // gandi-api does not support updates
 			},
 			"zone_id": &schema.Schema{
 				Type:     schema.TypeString, // needs to be string cause int64 is required
@@ -35,17 +34,14 @@ func resourceRecord() *schema.Resource {
 			"type": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true, // gandi-api does not support updates
 			},
 			"value": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true, // gandi-api does not support updates
 			},
 			"ttl": &schema.Schema{
 				Type:     schema.TypeInt,
 				Required: true,
-				ForceNew: true, // gandi-api does not support updates
 			},
 		},
 	}
@@ -98,7 +94,7 @@ func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 
 	// Success
 	d.SetId(strconv.FormatInt(newRecord.Id, 10))
-	log.Printf("[INFO] Successfully created %v", newRecord.Id)
+	log.Printf("[INFO] Successfully created %v", d.Id())
 
 	return ReadRecord(d, meta)
 }
@@ -137,9 +133,34 @@ func ReadRecord(d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
 
-//TODO: implement update record functionality
-// API does not support update record call; unlikely without much hackery
-func UpdateRecord(d *schema.ResourceData, meta interface{}) error { return nil }
+// UpdateRecord updates record in zone/version according to the new spec
+func UpdateRecord(d *schema.ResourceData, meta interface{}) error {
+	client := getRecordClient(meta)
+
+	// zoneID is stored as string in tfstate, API expects an int64
+	zoneID, _ := strconv.ParseInt(d.Get("zone_id").(string), 10, 64)
+	ID, _ := strconv.ParseInt(d.Id(), 10, 64)
+
+	updatedRecordSpec := record.RecordUpdate{
+		Name:    d.Get("name").(string),
+		Value:   d.Get("value").(string),
+		Ttl:     int64(d.Get("ttl").(int)),
+		Type:    d.Get("type").(string),
+		Zone:    zoneID,
+		Version: int64(d.Get("version").(int)),
+		Id:      ID,
+	}
+
+	log.Printf("[DEBUG] Updating Record: %v", d.Id())
+	_, err := client.Update(updatedRecordSpec)
+	if err != nil {
+		return fmt.Errorf("Cannot update %v", err)
+	}
+
+	// Success
+	log.Printf("[DEBUG] Updated Record: %v", d.Id())
+	return nil
+}
 
 //DeleteRecord deletes records from zone version by id
 func DeleteRecord(d *schema.ResourceData, meta interface{}) error {
