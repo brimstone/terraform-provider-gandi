@@ -62,10 +62,10 @@ func recordIDExist(records []*record.RecordInfo, recordID int64) int {
 	recordIDs.Sort()
 	i := sortutil.SearchInt64s(recordIDs, recordID)
 	if i < len(recordIDs) && recordIDs[i] == recordID {
-		log.Print("[DEBUG] Record Found!")
+		log.Print("[DEBUG] Record found")
 		return i
 	}
-	log.Print("[DEBUG] Record Not Found")
+	log.Print("[DEBUG] Record not found")
 	return -1
 }
 
@@ -85,7 +85,7 @@ func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 		Version: int64(d.Get("version").(int)),
 	}
 
-	log.Printf("[DEBUG] Creating: %#v", newRecordSpec)
+	log.Printf("[DEBUG] Creating record from spec: %#v", newRecordSpec)
 
 	newRecord, err := client.Add(newRecordSpec)
 	if err != nil {
@@ -106,11 +106,11 @@ func ReadRecord(d *schema.ResourceData, meta interface{}) error {
 	// zoneID is stored as string in tfstate, API expects an int64
 	zoneID, _ := strconv.ParseInt(d.Get("zone_id").(string), 10, 64)
 
-	log.Printf("[DEBUG] Reading Records from Zone:%v, Version:%v", zoneID, d.Get("version"))
+	log.Printf("[DEBUG] Reading records from zone:%v, version:%v", zoneID, d.Get("version"))
 	records, err := client.List(int64(zoneID), int64(d.Get("version").(int)))
 
 	if err != nil {
-		return fmt.Errorf("Cannot read the record: %v", d.Id())
+		return fmt.Errorf("Cannot read record: %v", d.Id())
 	}
 
 	// ID is stored as string in tfstate, API expects an int64
@@ -118,7 +118,7 @@ func ReadRecord(d *schema.ResourceData, meta interface{}) error {
 
 	i := recordIDExist(records, ID) //index of the Record
 	if i < 0 {
-		log.Printf("[DEBUG] Record: %v not found. Cleaning local state reference", ID)
+		log.Printf("[DEBUG] Record: %v not found", ID)
 		d.SetId("")
 		return nil
 	}
@@ -151,14 +151,14 @@ func UpdateRecord(d *schema.ResourceData, meta interface{}) error {
 		Id:      ID,
 	}
 
-	log.Printf("[DEBUG] Updating Record: %v", d.Id())
+	log.Printf("[DEBUG] Updating record: %v", d.Id())
 	_, err := client.Update(updatedRecordSpec)
 	if err != nil {
 		return fmt.Errorf("Cannot update %v", err)
 	}
 
 	// Success
-	log.Printf("[DEBUG] Updated Record: %v", d.Id())
+	log.Printf("[DEBUG] Updated record: %v", d.Id())
 	return nil
 }
 
@@ -171,14 +171,14 @@ func DeleteRecord(d *schema.ResourceData, meta interface{}) error {
 	zoneID, _ := strconv.ParseInt(d.Get("zone_id").(string), 10, 64)
 	ID, _ := strconv.ParseInt(d.Id(), 10, 64)
 
-	log.Printf("[DEBUG] Deleting Record: %v", d.Id())
+	log.Printf("[DEBUG] Deleting record: %v", d.Id())
 	success, err := client.Delete(zoneID, int64(d.Get("version").(int)), ID)
 	if err != nil {
 		return fmt.Errorf("Cannot delete: %v", err)
 	}
 
 	if success {
-		log.Printf("[DEBUG] Deleted Record: %v", d.Id())
+		log.Printf("[DEBUG] Deleted record: %v", d.Id())
 		d.SetId("")
 	}
 
