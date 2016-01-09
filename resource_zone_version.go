@@ -32,6 +32,7 @@ func resourceZoneVersion() *schema.Resource {
 			"zone_version": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 		},
 	}
@@ -43,7 +44,33 @@ func getZoneVersionClient(meta interface{}) *zoneVersion.Version {
 }
 
 // UpdateZoneVersion changes zone properties
-func UpdateZoneVersion(d *schema.ResourceData, meta interface{}) error { return nil }
+func UpdateZoneVersion(d *schema.ResourceData, meta interface{}) error {
+	// when the base zone version is changed, the version is re-created
+	// WARNING: all the records added to the version of the zone are going
+	// to be in a loose state.
+	// TODO: this needs to be handled in the records too!
+
+	if d.HasChange("base_version") {
+		// delete zone
+		// create new zone based on the new base_version
+		// change the id so the records referencing this zone version can also detect the change
+		// zoneID, zoneVersion, baseVersionNumber := extractIDs(d.Id(), "_")
+
+		// Open transaction
+		log.Printf("[DEBUG] Updating zone (create step)")
+		successCreate := CreateZoneVersion(d, meta)
+		if successCreate != nil {
+			return fmt.Errorf("Cannot update zone version (create step): %v")
+		}
+
+		log.Printf("[DEBUG] Updating zone (delete step)")
+		successDelete := DeleteZoneVersion(d, meta)
+		if successDelete != nil {
+			return fmt.Errorf("Cannot update zone version (delete step): %v")
+		}
+	}
+	return nil
+}
 
 // CreateZoneVersion creates new zone
 func CreateZoneVersion(d *schema.ResourceData, meta interface{}) error {
@@ -149,10 +176,10 @@ func DeleteZoneVersion(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[DEBUG] Deleting zone version: %v", d.Id())
 
 	// Parse out version numbers from the resource ID
-	zoneID, zoneVersionNumber, _ := extractIDs(d.Id(), "|")
+	zoneID, zoneVersion, baseVersionNumber := extractIDs(d.Id(), "_")
 
 	log.Printf("[DEBUG] Deleting zone version: %v", d.Id())
-	success, err := client.Delete(zoneID, zoneVersionNumber)
+	success, err := client.Delete(zoneID, zoneVersion)
 	if err != nil {
 		return fmt.Errorf("Cannot delete: %v", err)
 	}
