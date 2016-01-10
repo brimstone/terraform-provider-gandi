@@ -45,31 +45,33 @@ func getZoneVersionClient(meta interface{}) *zoneVersion.Version {
 
 // UpdateZoneVersion changes zone properties
 func UpdateZoneVersion(d *schema.ResourceData, meta interface{}) error {
-	// when the base zone version is changed, the version is re-created
-	// WARNING: all the records added to the version of the zone are going
-	// to be in a loose state.
-	// TODO: this needs to be handled in the records too!
-
-	if d.HasChange("base_version") {
-		// delete zone
-		// create new zone based on the new base_version
-		// change the id so the records referencing this zone version can also detect the change
-		// zoneID, zoneVersion, baseVersionNumber := extractIDs(d.Id(), "_")
-
-		// Open transaction
-		log.Printf("[DEBUG] Updating zone (create step)")
-		successCreate := CreateZoneVersion(d, meta)
-		if successCreate != nil {
-			return fmt.Errorf("Cannot update zone version (create step): %v")
-		}
-
-		log.Printf("[DEBUG] Updating zone (delete step)")
-		successDelete := DeleteZoneVersion(d, meta)
-		if successDelete != nil {
-			return fmt.Errorf("Cannot update zone version (delete step): %v")
-		}
-	}
+	// Updates to the zone versions are theoretically possible but they involve
+	// change to the ID since the version information is not available
 	return nil
+}
+
+// func to create version with the specified client
+func _createZoneVersion(client *zoneVersion.Version, zoneID int64, baseVersion int64, zoneVersion int64) (string, error) {
+	zoneExist, err := _checkZoneVersion(client, zoneID, zoneVersion)
+	if err != nil {
+		return "", fmt.Errorf("Cannot check zone versions: %v", err)
+	}
+
+	if zoneExist {
+		return "", fmt.Errorf("Zone version: %v already exist", zoneVersion)
+	}
+
+	// Create new version of the zone
+	newZoneVersion, err := client.New(zoneID, baseVersion)
+
+	if err != nil {
+		return "", fmt.Errorf("Cannot create zone version: %s", err)
+	}
+
+	// Id is stored as compound string "zoneID_zoneVersion"
+	ID := strconv.FormatInt(int64(zoneID), 10) + "_" + strconv.FormatInt(int64(newZoneVersion), 10)
+
+	return ID, nil
 }
 
 // CreateZoneVersion creates new zone
@@ -84,42 +86,29 @@ func CreateZoneVersion(d *schema.ResourceData, meta interface{}) error {
 	// It needs to be checked for consistency to allow tight tracking of local+remote states
 	// of zone versioning
 
-	zoneExist, err := checkZoneVersion(client, zoneID, zoneVersion)
+	ID, err := _createZoneVersion(client, zoneID, baseVersion, zoneVersion)
 	if err != nil {
-		return fmt.Errorf("Cannot check zone versions: %v", err)
+		return nil
 	}
 
-	if zoneExist {
-		return fmt.Errorf("Zone version: %v already exist", zoneVersion)
-	}
-
-	// Create new version of the zone
-	newZoneVersion, err := client.New(zoneID, baseVersion)
-
-	if err != nil {
-		return fmt.Errorf("Cannot create zone version: %s", err)
-	}
-
-	// Id is stored as compound string "zoneID_baseVersionNumber_zoneVersion"
-	ID := strconv.FormatInt(int64(zoneID), 10) + "_" + strconv.FormatInt(int64(baseVersion), 10)
-	ID = ID + "_" + strconv.FormatInt(int64(zoneVersion), 10)
 	d.SetId(ID)
-	log.Printf("[INFO] Created new version: %v of zone: %v", newZoneVersion, zoneID)
+	log.Printf("[INFO] Created new zone version with ID: %v", ID)
 
 	return ReadZoneVersion(d, meta)
 }
 
 // decode zoneID and versions from the custom resource ID
-func extractIDs(id string, separator string) (int64, int64, int64) {
+func _extractIDs(id string, separator string) (int64, int64) {
 	zoneID, _ := strconv.ParseInt(strings.Split(id, separator)[0], 10, 64)
 	zoneVersion, _ := strconv.ParseInt(strings.Split(id, separator)[1], 10, 64)
-	baseVersion, _ := strconv.ParseInt(strings.Split(id, separator)[2], 10, 64)
+	// baseVersion, _ := strconv.ParseInt(strings.Split(id, separator)[2], 10, 64)
 
-	return zoneID, zoneVersion, baseVersion
+	// return zoneID, zoneVersion, baseVersion
+	return zoneID, zoneVersion
 }
 
 // looks up version in the zone
-func checkZoneVersion(client *zoneVersion.Version, zoneID int64, zoneVersionNumber int64) (bool, error) {
+func _checkZoneVersion(client *zoneVersion.Version, zoneID int64, zoneVersionNumber int64) (bool, error) {
 	var zoneVersionNumbers sortutil.Int64Slice
 
 	log.Printf("[DEBUG] Reading zone: %v versions", zoneID)
@@ -146,22 +135,19 @@ func checkZoneVersion(client *zoneVersion.Version, zoneID int64, zoneVersionNumb
 	return false, nil
 }
 
-// ReadZone fetches configuration
+// ReadZoneVersion fetches configuration
 func ReadZoneVersion(d *schema.ResourceData, meta interface{}) error {
 	client := getZoneVersionClient(meta)
 
 	// Parse out version numbers from the resource ID
-	zoneID, zoneVersion, baseVersionNumber := extractIDs(d.Id(), "_")
+	zoneID, zoneVersion := _extractIDs(d.Id(), "_")
 
-	zoneExist, err := checkZoneVersion(client, zoneID, zoneVersion)
+	zoneExist, err := _checkZoneVersion(client, zoneID, zoneVersion)
 	if err != nil {
-		return fmt.Errorf("Cannot check zone version: %v", err)
+		return fmt.Errorf("Cannot verify if zone exist: %v", err)
 	}
 
-	if zoneExist {
-		d.Set("base_version", baseVersionNumber)
-		d.Set("zone_id", zoneID)
-	} else {
+	if !zoneExist {
 		log.Printf("[DEBUG] Zone version with ID: %v not found. Cleaning local state reference", d.Id())
 		d.SetId("")
 	}
@@ -176,7 +162,7 @@ func DeleteZoneVersion(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[DEBUG] Deleting zone version: %v", d.Id())
 
 	// Parse out version numbers from the resource ID
-	zoneID, zoneVersion, baseVersionNumber := extractIDs(d.Id(), "_")
+	zoneID, zoneVersion := _extractIDs(d.Id(), "_")
 
 	log.Printf("[DEBUG] Deleting zone version: %v", d.Id())
 	success, err := client.Delete(zoneID, zoneVersion)
