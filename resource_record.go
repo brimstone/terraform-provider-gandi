@@ -24,11 +24,11 @@ func resourceRecord() *schema.Resource {
 				Required: true,
 			},
 			"zone_id": &schema.Schema{
-				Type:     schema.TypeString, // needs to be string cause int64 is required
+				Type:     schema.TypeString, // needs to be string cause API uses int64
 				Required: true,
 			},
 			"version": &schema.Schema{
-				Type:     schema.TypeInt, //TODO: make sure this is not crossing int>int64
+				Type:     schema.TypeInt,
 				Required: true,
 			},
 			"type": &schema.Schema{
@@ -62,10 +62,10 @@ func recordIDExist(records []*record.RecordInfo, recordID int64) int {
 	recordIDs.Sort()
 	i := sortutil.SearchInt64s(recordIDs, recordID)
 	if i < len(recordIDs) && recordIDs[i] == recordID {
-		log.Print("[DEBUG] Record found")
+		log.Printf("[DEBUG] Record: %v found...", recordID)
 		return i
 	}
-	log.Print("[DEBUG] Record not found")
+	log.Printf("[DEBUG] Record %v not found...", recordID)
 	return -1
 }
 
@@ -85,16 +85,16 @@ func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 		Version: int64(d.Get("version").(int)),
 	}
 
-	log.Printf("[DEBUG] Creating record from spec: %#v", newRecordSpec)
+	log.Printf("[DEBUG] Creating new record from spec: %+v", newRecordSpec)
 
 	newRecord, err := client.Add(newRecordSpec)
 	if err != nil {
-		return fmt.Errorf("Could not create record: %v", err)
+		return fmt.Errorf("Could not create new record: %v", err)
 	}
 
 	// Success
 	d.SetId(strconv.FormatInt(newRecord.Id, 10))
-	log.Printf("[INFO] Successfully created %v", d.Id())
+	log.Printf("[INFO] Successfully created record: %v", d.Id())
 
 	return ReadRecord(d, meta)
 }
@@ -154,7 +154,7 @@ func UpdateRecord(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[DEBUG] Updating record: %v", d.Id())
 	_, err := client.Update(updatedRecordSpec)
 	if err != nil {
-		return fmt.Errorf("Cannot update %v", err)
+		return fmt.Errorf("Cannot update record: %v", err)
 	}
 
 	// Success
@@ -174,7 +174,7 @@ func DeleteRecord(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[DEBUG] Deleting record: %v", d.Id())
 	success, err := client.Delete(zoneID, int64(d.Get("version").(int)), ID)
 	if err != nil {
-		return fmt.Errorf("Cannot delete: %v", err)
+		return fmt.Errorf("Cannot delete record: %v", err)
 	}
 
 	if success {

@@ -50,12 +50,12 @@ func CreateZone(d *schema.ResourceData, meta interface{}) error {
 
 	zone, err := client.Create(d.Get("name").(string))
 	if err != nil {
-		return fmt.Errorf("Cannot create: %s", err)
+		return fmt.Errorf("Cannot create zone: %s", err)
 	}
 
 	// Assign the zone Id to a string repr of the zone.Id
 	d.SetId(strconv.FormatInt(zone.Id, 10))
-	log.Printf("[INFO] Zone with ID: %v", zone.Id)
+	log.Printf("[INFO] Created zone with ID: %v", zone.Id)
 
 	// TODO: make the association happen here (under create) so it can be read later with ReadZone
 
@@ -67,7 +67,7 @@ func ReadZone(d *schema.ResourceData, meta interface{}) error {
 	client := getZoneClient(meta)
 
 	//Id is a name after the resource "type" "name"
-	log.Printf("[DEBUG] Reading Zone: %v", d.Id())
+	log.Printf("[DEBUG] Reading zone: %v", d.Id())
 
 	// Id is stored as string in tfstate, API expects a int64
 	ID, _ := strconv.ParseInt(d.Id(), 10, 64)
@@ -91,16 +91,16 @@ func ReadZone(d *schema.ResourceData, meta interface{}) error {
 func DeleteZone(d *schema.ResourceData, meta interface{}) error {
 	client := getZoneClient(meta)
 
-	log.Printf("[DEBUG] Deleting Zone: %v", d.Id())
+	log.Printf("[DEBUG] Deleting zone: %v", d.Id())
 
 	ID, _ := strconv.ParseInt(d.Id(), 10, 64)
 	success, err := client.Delete(ID)
 	if err != nil {
-		return fmt.Errorf("Cannot delete: %s", err)
+		return fmt.Errorf("Cannot delete zone: %s", err)
 	}
 
 	if success {
-		log.Printf("[DEBUG] Deleted Zone: %v", d.Id())
+		log.Printf("[DEBUG] Deleted zone: %v", d.Id())
 		d.SetId("")
 	}
 
