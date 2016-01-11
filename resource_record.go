@@ -52,23 +52,6 @@ func getRecordClient(meta interface{}) *record.Record {
 	return record.New(meta.(*client.Client))
 }
 
-func recordIDExist(records []*record.RecordInfo, recordID int64) int {
-	var recordIDs sortutil.Int64Slice
-	for _, r := range records {
-		recordIDs = append(recordIDs, r.Id)
-	}
-
-	// sort the list before lookup
-	recordIDs.Sort()
-	i := sortutil.SearchInt64s(recordIDs, recordID)
-	if i < len(recordIDs) && recordIDs[i] == recordID {
-		log.Printf("[DEBUG] Record: %v found...", recordID)
-		return i
-	}
-	log.Printf("[DEBUG] Record %v not found...", recordID)
-	return -1
-}
-
 // CreateRecord creates new record
 func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 	client := getRecordClient(meta)
@@ -99,37 +82,72 @@ func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 	return ReadRecord(d, meta)
 }
 
+func GetRecord(client *record.Record, zoneID interface{}, zoneVersion interface{}, recordID interface{}) (*record.RecordInfo, error) {
+	var zid, zv, rid int64
+	zid, _ = strconv.ParseInt(zoneID.(string), 10, 64)
+	zv = zoneVersion.(int64)
+	rid, _ = strconv.ParseInt(recordID.(string), 10, 64)
+
+	records, err := client.List(zid, zv)
+
+	if err != nil {
+		return &record.RecordInfo{}, fmt.Errorf("Cannot read record: %v", rid)
+	}
+
+	var recordIDs sortutil.Int64Slice
+	for _, r := range records {
+		recordIDs = append(recordIDs, r.Id)
+	}
+
+	recordIDs.Sort()
+	i := sortutil.SearchInt64s(recordIDs, rid)
+	if i < len(recordIDs) && recordIDs[i] == rid {
+		log.Printf("[DEBUG] Record: %v found...", rid)
+		return records[i], nil
+	}
+	log.Printf("[DEBUG] Record %v not found...", rid)
+	return &record.RecordInfo{}, nil
+}
+
+// Looks up record in the specific zone/version
+func CheckRecord(client *record.Record, zoneID interface{}, zoneVersion interface{}, recordID interface{}) (bool, error) {
+	record, err := GetRecord(client, zoneID, zoneVersion, recordID)
+	if err != nil {
+		return false, err
+	}
+	// HACK: this probably can be better asserted for trueness
+	if record.Value != "" {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 // ReadRecord fetches configuration
 func ReadRecord(d *schema.ResourceData, meta interface{}) error {
 	client := getRecordClient(meta)
 
 	// zoneID is stored as string in tfstate, API expects an int64
-	zoneID, _ := strconv.ParseInt(d.Get("zone_id").(string), 10, 64)
+	zoneID := d.Get("zone_id")
+	zoneVersion := d.Get("version")
+	recordID := d.Id()
 
-	log.Printf("[DEBUG] Reading records from zone:%v, version:%v", zoneID, d.Get("version"))
-	records, err := client.List(int64(zoneID), int64(d.Get("version").(int)))
+	log.Printf("[DEBUG] Reading records from zone: %v version: %v", zoneID, zoneVersion)
 
+	record, err := GetRecord(client, zoneID, zoneVersion, recordID)
 	if err != nil {
-		return fmt.Errorf("Cannot read record: %v", d.Id())
+		return err
 	}
 
-	// ID is stored as string in tfstate, API expects an int64
-	ID, _ := strconv.ParseInt(d.Id(), 10, 64)
-
-	i := recordIDExist(records, ID) //index of the Record
-	if i < 0 {
-		log.Printf("[DEBUG] Record: %v not found", ID)
+	if record.Name != "" {
+		d.Set("name", record.Name)
+		d.Set("value", record.Value)
+		d.Set("ttl", record.Ttl)
+		d.Set("type", record.Type)
+	} else {
+		log.Printf("[DEBUG] Deleting record from tfstate: %v", recordID)
 		d.SetId("")
-		return nil
 	}
-
-	d.Set("name", records[i].Name)
-	d.Set("value", records[i].Value)
-	d.Set("ttl", records[i].Ttl)
-	d.Set("type", records[i].Type)
-	// zone_id and version properties are already set properly since
-	// they were used for the lookup
-
 	return nil
 }
 

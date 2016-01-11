@@ -52,7 +52,7 @@ func UpdateZoneVersion(d *schema.ResourceData, meta interface{}) error {
 
 // func to create version with the specified client
 func _createZoneVersion(client *zoneVersion.Version, zoneID int64, baseVersion int64, zoneVersion int64) (string, error) {
-	zoneExist, err := _checkZoneVersion(client, zoneID, zoneVersion)
+	zoneExist, err := CheckZoneVersion(client, zoneID, zoneVersion)
 	if err != nil {
 		return "", fmt.Errorf("Cannot check zone versions: %v", err)
 	}
@@ -105,8 +105,8 @@ func _extractIDs(id string, separator string) (int64, int64) {
 	return zoneID, zoneVersion
 }
 
-// verify if the zone version exist within specified zone id
-func _checkZoneVersion(client *zoneVersion.Version, zoneID int64, zoneVersionNumber int64) (bool, error) {
+// CheckZoneVersion
+func CheckZoneVersion(client *zoneVersion.Version, zoneID int64, zoneVersionNumber int64) (bool, error) {
 	var zoneVersionNumbers sortutil.Int64Slice
 
 	log.Printf("[DEBUG] Reading zone versions from: %v", zoneID)
@@ -139,12 +139,12 @@ func ReadZoneVersion(d *schema.ResourceData, meta interface{}) error {
 	// Parse out version numbers from the resource ID
 	zoneID, zoneVersion := _extractIDs(d.Id(), "_")
 
-	zoneExist, err := _checkZoneVersion(client, zoneID, zoneVersion)
+	zoneExists, err := CheckZoneVersion(client, zoneID, zoneVersion)
 	if err != nil {
 		return fmt.Errorf("Cannot verify if zone version exist: %v", err)
 	}
 
-	if !zoneExist {
+	if !zoneExists {
 		log.Printf("[DEBUG] Zone version with ID: %v not found. Cleaning local state reference", d.Id())
 		d.SetId("")
 	}
