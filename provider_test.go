@@ -1,4 +1,4 @@
-package main
+package gandi
 
 import (
 	"os"
@@ -48,5 +48,8 @@ func testAccPreCheck(t *testing.T) {
 	}
 	if v := os.Getenv("GANDI_ZONE_VERSION"); v == "" {
 		t.Fatal("GANDI_ZONE_VERSION must be set for acceptance tests")
+	}
+	if v := os.Getenv("GANDI_TESTING"); v == "" {
+		t.Fatal("GANDI_TESTING must be set for acceptance tests")
 	}
 }

@@ -1,4 +1,4 @@
-package main
+package gandi
 
 import (
 	"fmt"
@@ -40,7 +40,7 @@ func resourceRecord() *schema.Resource {
 				Required: true,
 			},
 			"ttl": &schema.Schema{
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Required: true,
 			},
 		},
@@ -58,11 +58,12 @@ func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 
 	// zoneID is stored as string in tfstate, API expects an int64
 	zoneID, _ := strconv.ParseInt(d.Get("zone_id").(string), 10, 64)
+	ttl, _ := strconv.ParseInt(d.Get("ttl").(string), 10, 64)
 
 	newRecordSpec := record.RecordAdd{
 		Name:    d.Get("name").(string),
 		Value:   d.Get("value").(string),
-		Ttl:     int64(d.Get("ttl").(int)),
+		Ttl:     ttl,
 		Type:    d.Get("type").(string),
 		Zone:    zoneID,
 		Version: int64(d.Get("version").(int)),
@@ -158,11 +159,12 @@ func UpdateRecord(d *schema.ResourceData, meta interface{}) error {
 	// zoneID is stored as string in tfstate, API expects an int64
 	zoneID, _ := strconv.ParseInt(d.Get("zone_id").(string), 10, 64)
 	ID, _ := strconv.ParseInt(d.Id(), 10, 64)
+	ttl, _ := strconv.ParseInt(d.Get("ttl").(string), 10, 64)
 
 	updatedRecordSpec := record.RecordUpdate{
 		Name:    d.Get("name").(string),
 		Value:   d.Get("value").(string),
-		Ttl:     int64(d.Get("ttl").(int)),
+		Ttl:     ttl,
 		Type:    d.Get("type").(string),
 		Zone:    zoneID,
 		Version: int64(d.Get("version").(int)),

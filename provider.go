@@ -1,4 +1,4 @@
-package main
+package gandi
 
 import (
 	"github.com/hashicorp/terraform/helper/schema"
@@ -18,7 +18,7 @@ func Provider() terraform.ResourceProvider {
 			"testing": &schema.Schema{
 				Type:        schema.TypeBool,
 				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("GANDI_TESTING", true),
+				DefaultFunc: schema.EnvDefaultFunc("GANDI_TESTING", nil),
 				Description: "Set it to use the Test Environment.",
 			},
 		},

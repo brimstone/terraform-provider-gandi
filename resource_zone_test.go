@@ -1,4 +1,4 @@
-package main
+package gandi
 
 import (
 	"testing"

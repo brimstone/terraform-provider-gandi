@@ -1,4 +1,4 @@
-package main
+package gandi
 
 import (
 	"fmt"
@@ -98,7 +98,7 @@ resource "gandi_record" "test" {
   name = "testa"
   type = "A"
   value = "1.1.1.1"
-  ttl = 2000
+  ttl = "2000"
 }`
 
 const testGandiRecordConfigCNAME = `
