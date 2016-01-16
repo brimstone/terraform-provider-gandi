@@ -53,31 +53,42 @@ func getRecordClient(meta interface{}) *record.Record {
 	return record.New(meta.(*client.Client))
 }
 
-var RecordAdd struct {
+type ZoneRecord struct {
 	record.RecordAdd
+	Id int64
+}
+
+func (zr *ZoneRecord) Parse(d *schema.ResourceData) {
+	zr.Zone, _ = strconv.ParseInt(d.Get("zone_id").(string), 10, 64)
+	zr.Ttl, _ = strconv.ParseInt(d.Get("ttl").(string), 10, 64)
+	zr.Version, _ = strconv.ParseInt(d.Get("version").(string), 10, 64)
+	zr.Name = d.Get("name").(string)
+	zr.Value = d.Get("value").(string)
+	zr.Type = d.Get("type").(string)
+	zr.Id, _ = strconv.ParseInt(d.Id(), 10, 64)
+}
+
+func (zr *ZoneRecord) toRecordAdd() record.RecordAdd {
+	return record.RecordAdd{
+		Zone:    zr.Zone,
+		Ttl:     zr.Ttl,
+		Version: zr.Version,
+		Name:    zr.Name,
+		Value:   zr.Value,
+		Type:    zr.Type,
+	}
 }
 
 // CreateRecord creates new record
 func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 	client := getRecordClient(meta)
 
-	// zoneID is stored as string in tfstate, API expects an int64
-	zoneID, _ := strconv.ParseInt(d.Get("zone_id").(string), 10, 64)
-	ttl, _ := strconv.ParseInt(d.Get("ttl").(string), 10, 64)
-	version, _ := strconv.ParseInt(d.Get("version").(string), 10, 64)
+	var zr ZoneRecord
+	zr.Parse(d)
 
-	newRecordSpec := RecordAdd{
-		Name:    d.Get("name").(string),
-		Value:   d.Get("value").(string),
-		Ttl:     ttl,
-		Type:    d.Get("type").(string),
-		Zone:    zoneID,
-		Version: version,
-	}
+	// log.Printf("[DEBUG] Creating new record from spec: %+v", &ZoneRecord.New(d))
 
-	log.Printf("[DEBUG] Creating new record from spec: %+v", newRecordSpec)
-
-	newRecord, err := client.Add(newRecordSpec)
+	newRecord, err := client.Add(zr.toRecordAdd())
 	if err != nil {
 		return fmt.Errorf("Could not create new record: %v", err)
 	}
