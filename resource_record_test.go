@@ -81,6 +81,7 @@ func testAccCheckGandiRecordExists(n string, r *record.RecordInfo) resource.Test
 			return err
 			log.Println("%+v", foundRecord)
 		}
+
 		log.Println("%+v", foundRecord)
 		//TODO: there should be a method on Record struct to make the string conversions easy
 		if strconv.FormatInt(foundRecord.Id, 10) != rs.Primary.ID {

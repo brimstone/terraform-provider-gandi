@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 
 	"github.com/cznic/sortutil"
 	"github.com/hashicorp/terraform/helper/schema"
@@ -52,6 +53,10 @@ func getRecordClient(meta interface{}) *record.Record {
 	return record.New(meta.(*client.Client))
 }
 
+var RecordAdd struct {
+	record.RecordAdd
+}
+
 // CreateRecord creates new record
 func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 	client := getRecordClient(meta)
@@ -61,7 +66,7 @@ func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 	ttl, _ := strconv.ParseInt(d.Get("ttl").(string), 10, 64)
 	version, _ := strconv.ParseInt(d.Get("version").(string), 10, 64)
 
-	newRecordSpec := record.RecordAdd{
+	newRecordSpec := RecordAdd{
 		Name:    d.Get("name").(string),
 		Value:   d.Get("value").(string),
 		Ttl:     ttl,
@@ -111,7 +116,7 @@ func GetRecord(client *record.Record, zoneID interface{}, zoneVersion interface{
 	}
 
 	// not found
-	return nil, fmt.Errorf("[DEBUG] Record %v not found", rid)
+	return nil, fmt.Errorf("Record not found")
 }
 
 // CheckRecord returns boolean value for record existence
@@ -141,18 +146,22 @@ func ReadRecord(d *schema.ResourceData, meta interface{}) error {
 
 	record, err := GetRecord(client, zoneID, zoneVersion, recordID)
 	if err != nil {
-		return err
+		if strings.Contains(err.Error(), "Record not found") {
+			// not found
+			log.Printf("[DEBUG] Deleting record from tfstate: %v", recordID)
+			d.SetId("")
+			return nil
+		}
+		return fmt.Errorf("Couldn't find record: %s", err)
 	}
 
-	if record.Name != "" {
+	if record != nil {
 		d.Set("name", record.Name)
 		d.Set("value", record.Value)
 		d.Set("ttl", strconv.FormatInt(record.Ttl, 10))
 		d.Set("type", record.Type)
-	} else {
-		log.Printf("[DEBUG] Deleting record from tfstate: %v", recordID)
-		d.SetId("")
 	}
+
 	return nil
 }
 
