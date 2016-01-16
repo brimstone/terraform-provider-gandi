@@ -28,7 +28,7 @@ func resourceRecord() *schema.Resource {
 				Required: true,
 			},
 			"version": &schema.Schema{
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Required: true,
 			},
 			"type": &schema.Schema{
@@ -59,6 +59,7 @@ func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 	// zoneID is stored as string in tfstate, API expects an int64
 	zoneID, _ := strconv.ParseInt(d.Get("zone_id").(string), 10, 64)
 	ttl, _ := strconv.ParseInt(d.Get("ttl").(string), 10, 64)
+	version, _ := strconv.ParseInt(d.Get("version").(string), 10, 64)
 
 	newRecordSpec := record.RecordAdd{
 		Name:    d.Get("name").(string),
@@ -66,7 +67,7 @@ func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 		Ttl:     ttl,
 		Type:    d.Get("type").(string),
 		Zone:    zoneID,
-		Version: int64(d.Get("version").(int)),
+		Version: version,
 	}
 
 	log.Printf("[DEBUG] Creating new record from spec: %+v", newRecordSpec)
@@ -86,7 +87,7 @@ func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 func GetRecord(client *record.Record, zoneID interface{}, zoneVersion interface{}, recordID interface{}) (*record.RecordInfo, error) {
 	var zid, zv, rid int64
 	zid, _ = strconv.ParseInt(zoneID.(string), 10, 64)
-	zv = zoneVersion.(int64)
+	zv, _ = strconv.ParseInt(zoneVersion.(string), 10, 64)
 	rid, _ = strconv.ParseInt(recordID.(string), 10, 64)
 
 	records, err := client.List(zid, zv)
@@ -106,8 +107,9 @@ func GetRecord(client *record.Record, zoneID interface{}, zoneVersion interface{
 		log.Printf("[DEBUG] Record: %v found...", rid)
 		return records[i], nil
 	}
-	log.Printf("[DEBUG] Record %v not found...", rid)
-	return &record.RecordInfo{}, nil
+	message := fmt.Sprintf("[DEBUG] Record %v not found...", rid)
+	fmt.Printf(message)
+	return &record.RecordInfo{}, fmt.Errorf(message)
 }
 
 // Looks up record in the specific zone/version
@@ -143,7 +145,7 @@ func ReadRecord(d *schema.ResourceData, meta interface{}) error {
 	if record.Name != "" {
 		d.Set("name", record.Name)
 		d.Set("value", record.Value)
-		d.Set("ttl", record.Ttl)
+		d.Set("ttl", strconv.FormatInt(record.Ttl, 10))
 		d.Set("type", record.Type)
 	} else {
 		log.Printf("[DEBUG] Deleting record from tfstate: %v", recordID)
@@ -160,6 +162,7 @@ func UpdateRecord(d *schema.ResourceData, meta interface{}) error {
 	zoneID, _ := strconv.ParseInt(d.Get("zone_id").(string), 10, 64)
 	ID, _ := strconv.ParseInt(d.Id(), 10, 64)
 	ttl, _ := strconv.ParseInt(d.Get("ttl").(string), 10, 64)
+	version, _ := strconv.ParseInt(d.Get("version").(string), 10, 64)
 
 	updatedRecordSpec := record.RecordUpdate{
 		Name:    d.Get("name").(string),
@@ -167,7 +170,7 @@ func UpdateRecord(d *schema.ResourceData, meta interface{}) error {
 		Ttl:     ttl,
 		Type:    d.Get("type").(string),
 		Zone:    zoneID,
-		Version: int64(d.Get("version").(int)),
+		Version: version,
 		Id:      ID,
 	}
 
@@ -186,13 +189,12 @@ func UpdateRecord(d *schema.ResourceData, meta interface{}) error {
 func DeleteRecord(d *schema.ResourceData, meta interface{}) error {
 	client := getRecordClient(meta)
 
-	//Delete(zoneId, version, recordId int64)
-	// zoneID is stored as string in tfstate, API expects an int64
 	zoneID, _ := strconv.ParseInt(d.Get("zone_id").(string), 10, 64)
 	ID, _ := strconv.ParseInt(d.Id(), 10, 64)
+	version, _ := strconv.ParseInt(d.Get("version").(string), 10, 64)
 
 	log.Printf("[DEBUG] Deleting record: %v", d.Id())
-	success, err := client.Delete(zoneID, int64(d.Get("version").(int)), ID)
+	success, err := client.Delete(zoneID, version, ID)
 	if err != nil {
 		return fmt.Errorf("Cannot delete record: %v", err)
 	}
