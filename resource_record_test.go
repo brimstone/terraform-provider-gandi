@@ -28,15 +28,15 @@ func TestAccDMERecordA(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckGandiRecordExists("gandi_record.test", &record),
 					resource.TestCheckResourceAttr(
-						"gandi_recor.test", "zone_id", zoneID),
+						"gandi_record.test", "zone_id", zoneID),
 					resource.TestCheckResourceAttr(
-						"gandi_recor.test", "name", "testa"),
+						"gandi_record.test", "name", "testa"),
 					resource.TestCheckResourceAttr(
-						"gandi_recor.test", "type", "A"),
+						"gandi_record.test", "type", "A"),
 					resource.TestCheckResourceAttr(
-						"gandi_recor.test", "value", "1.1.1.1"),
+						"gandi_record.test", "value", "1.1.1.1"),
 					resource.TestCheckResourceAttr(
-						"gandi_recor.test", "ttl", "2000"),
+						"gandi_record.test", "ttl", "2000"),
 				),
 			},
 		},
