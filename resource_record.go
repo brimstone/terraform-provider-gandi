@@ -84,6 +84,7 @@ func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 	return ReadRecord(d, meta)
 }
 
+// GetRecord returns record if exist in specified zone/version
 func GetRecord(client *record.Record, zoneID interface{}, zoneVersion interface{}, recordID interface{}) (*record.RecordInfo, error) {
 	var zid, zv, rid int64
 	zid, _ = strconv.ParseInt(zoneID.(string), 10, 64)
@@ -93,9 +94,10 @@ func GetRecord(client *record.Record, zoneID interface{}, zoneVersion interface{
 	records, err := client.List(zid, zv)
 
 	if err != nil {
-		return &record.RecordInfo{}, fmt.Errorf("Cannot read record: %v", rid)
+		return nil, fmt.Errorf("Cannot read record: %v", rid)
 	}
 
+	// need an int64 slice for sorting
 	var recordIDs sortutil.Int64Slice
 	for _, r := range records {
 		recordIDs = append(recordIDs, r.Id)
@@ -107,19 +109,19 @@ func GetRecord(client *record.Record, zoneID interface{}, zoneVersion interface{
 		log.Printf("[DEBUG] Record: %v found...", rid)
 		return records[i], nil
 	}
-	message := fmt.Sprintf("[DEBUG] Record %v not found...", rid)
-	fmt.Printf(message)
-	return &record.RecordInfo{}, fmt.Errorf(message)
+
+	// not found
+	return nil, fmt.Errorf("[DEBUG] Record %v not found", rid)
 }
 
-// Looks up record in the specific zone/version
+// CheckRecord returns boolean value for record existence
 func CheckRecord(client *record.Record, zoneID interface{}, zoneVersion interface{}, recordID interface{}) (bool, error) {
 	record, err := GetRecord(client, zoneID, zoneVersion, recordID)
 	if err != nil {
 		return false, err
 	}
-	// HACK: this probably can be better asserted for trueness
-	if record.Value != "" {
+
+	if record != nil {
 		return true, nil
 	}
 
