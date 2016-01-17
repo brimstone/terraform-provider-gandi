@@ -1,4 +1,4 @@
-package gandi
+package main
 
 import (
 	"fmt"
@@ -125,10 +125,10 @@ func CheckZoneVersion(client *zoneVersion.Version, zoneID int64, zoneVersionNumb
 	i := sortutil.SearchInt64s(zoneVersionNumbers, zoneVersionNumber)
 
 	if i < len(zoneVersionNumbers) && zoneVersionNumbers[i] == zoneVersionNumber {
-		log.Print("[DEBUG] Zone version found...")
+		log.Print("[DEBUG] Zone version found.")
 		return true, nil
 	}
-	log.Print("[DEBUG] Zone version not found...")
+	log.Print("[DEBUG] Zone version not found.")
 	return false, nil
 }
 

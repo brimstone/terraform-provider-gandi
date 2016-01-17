@@ -1,4 +1,4 @@
-package gandi
+package main
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cznic/sortutil"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/prasmussen/gandi-api/client"
 	"github.com/prasmussen/gandi-api/domain/zone/record"
@@ -61,14 +60,18 @@ type ZoneRecord struct {
 	Version int64
 }
 
-func (zr *ZoneRecord) Parse(d *schema.ResourceData) {
+func (zr *ZoneRecord) Parse(d *schema.ResourceData) error {
+	//TODO: do not ignore parsing errors
 	zr.Zone, _ = strconv.ParseInt(d.Get("zone_id").(string), 10, 64)
 	zr.Ttl, _ = strconv.ParseInt(d.Get("ttl").(string), 10, 64)
 	zr.Version, _ = strconv.ParseInt(d.Get("version").(string), 10, 64)
+	zr.Id, _ = strconv.ParseInt(d.Id(), 10, 64)
+
 	zr.Name = d.Get("name").(string)
 	zr.Value = d.Get("value").(string)
 	zr.Type = d.Get("type").(string)
-	zr.Id, _ = strconv.ParseInt(d.Id(), 10, 64)
+
+	return nil
 }
 
 func (zr *ZoneRecord) toRecordAdd() record.RecordAdd {
@@ -128,17 +131,12 @@ func GetRecord(client *record.Record, zoneID interface{}, zoneVersion interface{
 		return nil, fmt.Errorf("Cannot read record: %v", rid)
 	}
 
-	// need an int64 slice for sorting
-	var recordIDs sortutil.Int64Slice
+	// TODO: need to implement this to be sorted to improve speed
 	for _, r := range records {
-		recordIDs = append(recordIDs, r.Id)
-	}
-
-	recordIDs.Sort()
-	i := sortutil.SearchInt64s(recordIDs, rid)
-	if i < len(recordIDs) && recordIDs[i] == rid {
-		log.Printf("[DEBUG] Record: %v found...", rid)
-		return records[i], nil
+		if r.Id == rid {
+			log.Printf("[DEBUG] Record found: %v", rid)
+			return r, nil
+		}
 	}
 
 	// not found
@@ -170,6 +168,8 @@ func ReadRecord(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[DEBUG] Reading records from zone: %v version: %v", zoneID, zoneVersion)
 
 	record, err := GetRecord(client, zoneID, zoneVersion, recordID)
+	log.Printf("[DEBUG] %#v", record)
+
 	if err != nil {
 		if strings.Contains(err.Error(), "Record not found") {
 			// not found
@@ -201,9 +201,9 @@ func UpdateRecord(d *schema.ResourceData, meta interface{}) error {
 	client := getRecordClient(meta)
 
 	var zr ZoneRecord
-	new(ZoneRecord).Parse(d)
+	zr.Parse(d)
 
-	log.Printf("[DEBUG] Updating record: %v", zr.Id)
+	log.Printf("[DEBUG] Updating record: %v", d.Id())
 	//TODO: it returns []*record.RecordInfo. Does the driver update more than 1 record at the time?
 	_, err := client.Update(zr.toRecordUpdate())
 	if err != nil {

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package gandi
+package main
 
 import (
 	"github.com/hashicorp/terraform/helper/schema"

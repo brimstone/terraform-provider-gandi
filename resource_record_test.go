@@ -1,4 +1,4 @@
-package gandi
+package main
 
 import (
 	"fmt"
@@ -252,6 +252,53 @@ func TestAccGandiRecordSRV(t *testing.T) {
 						"gandi_record.test", "type", "SRV"),
 					resource.TestCheckResourceAttr(
 						"gandi_record.test", "value", "10 20 5060 old-slow-sip-box.example.com."),
+					resource.TestCheckResourceAttr(
+						"gandi_record.test", "ttl", "2000"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccGandiRecordModifyAintoCNAME(t *testing.T) {
+	var record record.RecordInfo
+	// zone id to perform tests with
+	zoneID := os.Getenv("GANDI_ZONE_ID")
+	zoneVersion := os.Getenv("GANDI_ZONE_VERSION")
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckGandiRecordDestroy,
+		Steps: []resource.TestStep{
+			resource.TestStep{
+				Config: fmt.Sprintf(testGandiRecordConfigA, zoneID, zoneVersion),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckGandiRecordExists("gandi_record.test", &record),
+					resource.TestCheckResourceAttr(
+						"gandi_record.test", "zone_id", zoneID),
+					resource.TestCheckResourceAttr(
+						"gandi_record.test", "name", "testa"),
+					resource.TestCheckResourceAttr(
+						"gandi_record.test", "type", "A"),
+					resource.TestCheckResourceAttr(
+						"gandi_record.test", "value", "1.1.1.1"),
+					resource.TestCheckResourceAttr(
+						"gandi_record.test", "ttl", "2000"),
+				),
+			},
+			resource.TestStep{
+				Config: fmt.Sprintf(testGandiRecordConfigCNAME, zoneID, zoneVersion),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckGandiRecordExists("gandi_record.test", &record),
+					resource.TestCheckResourceAttr(
+						"gandi_record.test", "zone_id", zoneID),
+					resource.TestCheckResourceAttr(
+						"gandi_record.test", "name", "testcname"),
+					resource.TestCheckResourceAttr(
+						"gandi_record.test", "type", "CNAME"),
+					resource.TestCheckResourceAttr(
+						"gandi_record.test", "value", "foo"),
 					resource.TestCheckResourceAttr(
 						"gandi_record.test", "ttl", "2000"),
 				),

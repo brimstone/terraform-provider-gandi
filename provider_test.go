@@ -1,4 +1,4 @@
-package gandi
+package main
 
 import (
 	"os"
