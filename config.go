@@ -1,7 +1,6 @@
 package gandi
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/prasmussen/gandi-api/client"
@@ -25,7 +24,6 @@ func (c *Config) Env() client.SystemType {
 func (c *Config) Client() *client.Client {
 
 	gandiClient := client.New(c.Key, c.Env())
-	fmt.Printf("%v, %v", gandiClient.Url, c.Key)
 	log.Printf("[INFO] Gandi Client configured for URL: %s with Key: %s", gandiClient.Url, c.Key)
 
 	return gandiClient

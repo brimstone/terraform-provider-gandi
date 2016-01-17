@@ -53,9 +53,12 @@ func getRecordClient(meta interface{}) *record.Record {
 	return record.New(meta.(*client.Client))
 }
 
+// ZoneRecord
 type ZoneRecord struct {
-	record.RecordAdd
-	Id int64
+	record.RecordInfo
+	Id      int64
+	Zone    int64
+	Version int64
 }
 
 func (zr *ZoneRecord) Parse(d *schema.ResourceData) {
@@ -79,6 +82,18 @@ func (zr *ZoneRecord) toRecordAdd() record.RecordAdd {
 	}
 }
 
+func (zr *ZoneRecord) toRecordUpdate() record.RecordUpdate {
+	return record.RecordUpdate{
+		Zone:    zr.Zone,
+		Ttl:     zr.Ttl,
+		Version: zr.Version,
+		Name:    zr.Name,
+		Value:   zr.Value,
+		Type:    zr.Type,
+		Id:      zr.Id,
+	}
+}
+
 // CreateRecord creates new record
 func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 	client := getRecordClient(meta)
@@ -86,7 +101,7 @@ func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 	var zr ZoneRecord
 	zr.Parse(d)
 
-	// log.Printf("[DEBUG] Creating new record from spec: %+v", &ZoneRecord.New(d))
+	log.Printf("[DEBUG] Creating new record from spec: %+v", zr)
 
 	newRecord, err := client.Add(zr.toRecordAdd())
 	if err != nil {
@@ -148,7 +163,6 @@ func CheckRecord(client *record.Record, zoneID interface{}, zoneVersion interfac
 func ReadRecord(d *schema.ResourceData, meta interface{}) error {
 	client := getRecordClient(meta)
 
-	// zoneID is stored as string in tfstate, API expects an int64
 	zoneID := d.Get("zone_id")
 	zoneVersion := d.Get("version")
 	recordID := d.Id()
@@ -167,8 +181,14 @@ func ReadRecord(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	if record != nil {
+		// XXX: Gandi quotes values for SRV and TXT records. They need to be unquoted for comparision
+		value, err := strconv.Unquote(record.Value)
+		// Cannot unquote, no quotes use as is
+		if err != nil {
+			value = record.Value
+		}
+		d.Set("value", value)
 		d.Set("name", record.Name)
-		d.Set("value", record.Value)
 		d.Set("ttl", strconv.FormatInt(record.Ttl, 10))
 		d.Set("type", record.Type)
 	}
@@ -180,30 +200,18 @@ func ReadRecord(d *schema.ResourceData, meta interface{}) error {
 func UpdateRecord(d *schema.ResourceData, meta interface{}) error {
 	client := getRecordClient(meta)
 
-	// zoneID is stored as string in tfstate, API expects an int64
-	zoneID, _ := strconv.ParseInt(d.Get("zone_id").(string), 10, 64)
-	ID, _ := strconv.ParseInt(d.Id(), 10, 64)
-	ttl, _ := strconv.ParseInt(d.Get("ttl").(string), 10, 64)
-	version, _ := strconv.ParseInt(d.Get("version").(string), 10, 64)
+	var zr ZoneRecord
+	new(ZoneRecord).Parse(d)
 
-	updatedRecordSpec := record.RecordUpdate{
-		Name:    d.Get("name").(string),
-		Value:   d.Get("value").(string),
-		Ttl:     ttl,
-		Type:    d.Get("type").(string),
-		Zone:    zoneID,
-		Version: version,
-		Id:      ID,
-	}
-
-	log.Printf("[DEBUG] Updating record: %v", d.Id())
-	_, err := client.Update(updatedRecordSpec)
+	log.Printf("[DEBUG] Updating record: %v", zr.Id)
+	//TODO: it returns []*record.RecordInfo. Does the driver update more than 1 record at the time?
+	_, err := client.Update(zr.toRecordUpdate())
 	if err != nil {
 		return fmt.Errorf("Cannot update record: %v", err)
 	}
 
 	// Success
-	log.Printf("[DEBUG] Updated record: %v", d.Id())
+	log.Printf("[DEBUG] Updated record: %v", zr.Id)
 	return nil
 }
 
@@ -211,18 +219,17 @@ func UpdateRecord(d *schema.ResourceData, meta interface{}) error {
 func DeleteRecord(d *schema.ResourceData, meta interface{}) error {
 	client := getRecordClient(meta)
 
-	zoneID, _ := strconv.ParseInt(d.Get("zone_id").(string), 10, 64)
-	ID, _ := strconv.ParseInt(d.Id(), 10, 64)
-	version, _ := strconv.ParseInt(d.Get("version").(string), 10, 64)
+	var zr ZoneRecord
+	zr.Parse(d)
 
 	log.Printf("[DEBUG] Deleting record: %v", d.Id())
-	success, err := client.Delete(zoneID, version, ID)
+	success, err := client.Delete(zr.Zone, zr.Version, zr.Id)
 	if err != nil {
 		return fmt.Errorf("Cannot delete record: %v", err)
 	}
 
 	if success {
-		log.Printf("[DEBUG] Deleted record: %v", d.Id())
+		log.Printf("[DEBUG] Deleted record: %v", zr.Id)
 		d.SetId("")
 	}
 
