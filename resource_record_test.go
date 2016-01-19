@@ -19,7 +19,10 @@ func TestAccGandiRecordA(t *testing.T) {
 	zoneVersion := os.Getenv("GANDI_ZONE_VERSION")
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck: func() {
+			testAccPreCheck(t)
+			testAccPreCheckRecord(t)
+		},
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckGandiRecordDestroy,
 		Steps: []resource.TestStep{
@@ -50,7 +53,10 @@ func TestAccGandiRecordCNAME(t *testing.T) {
 	zoneVersion := os.Getenv("GANDI_ZONE_VERSION")
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck: func() {
+			testAccPreCheck(t)
+			testAccPreCheckRecord(t)
+		},
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckGandiRecordDestroy,
 		Steps: []resource.TestStep{
@@ -81,7 +87,10 @@ func TestAccGandiRecordMX(t *testing.T) {
 	zoneVersion := os.Getenv("GANDI_ZONE_VERSION")
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck: func() {
+			testAccPreCheck(t)
+			testAccPreCheckRecord(t)
+		},
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckGandiRecordDestroy,
 		Steps: []resource.TestStep{
@@ -112,7 +121,10 @@ func TestAccGandiRecordTXT(t *testing.T) {
 	zoneVersion := os.Getenv("GANDI_ZONE_VERSION")
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck: func() {
+			testAccPreCheck(t)
+			testAccPreCheckRecord(t)
+		},
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckGandiRecordDestroy,
 		Steps: []resource.TestStep{
@@ -143,7 +155,10 @@ func TestAccGandiRecordSPF(t *testing.T) {
 	zoneVersion := os.Getenv("GANDI_ZONE_VERSION")
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck: func() {
+			testAccPreCheck(t)
+			testAccPreCheckRecord(t)
+		},
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckGandiRecordDestroy,
 		Steps: []resource.TestStep{
@@ -174,7 +189,10 @@ func TestAccGandiRecordNS(t *testing.T) {
 	zoneVersion := os.Getenv("GANDI_ZONE_VERSION")
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck: func() {
+			testAccPreCheck(t)
+			testAccPreCheckRecord(t)
+		},
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckGandiRecordDestroy,
 		Steps: []resource.TestStep{
@@ -205,7 +223,10 @@ func TestAccGandiRecordAAAA(t *testing.T) {
 	zoneVersion := os.Getenv("GANDI_ZONE_VERSION")
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck: func() {
+			testAccPreCheck(t)
+			testAccPreCheckRecord(t)
+		},
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckGandiRecordDestroy,
 		Steps: []resource.TestStep{
@@ -236,7 +257,10 @@ func TestAccGandiRecordSRV(t *testing.T) {
 	zoneVersion := os.Getenv("GANDI_ZONE_VERSION")
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck: func() {
+			testAccPreCheck(t)
+			testAccPreCheckRecord(t)
+		},
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckGandiRecordDestroy,
 		Steps: []resource.TestStep{
@@ -267,7 +291,10 @@ func TestAccGandiRecordModifyAintoCNAME(t *testing.T) {
 	zoneVersion := os.Getenv("GANDI_ZONE_VERSION")
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck: func() {
+			testAccPreCheck(t)
+			testAccPreCheckRecord(t)
+		},
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckGandiRecordDestroy,
 		Steps: []resource.TestStep{

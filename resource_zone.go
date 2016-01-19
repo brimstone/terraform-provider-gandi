@@ -71,6 +71,7 @@ func ReadZone(d *schema.ResourceData, meta interface{}) error {
 
 	// Id is stored as string in tfstate, API expects a int64
 	ID, _ := strconv.ParseInt(d.Id(), 10, 64)
+
 	// Read info about the zone
 	zone, err := client.Info(ID)
 	if err != nil {
