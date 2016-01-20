@@ -65,3 +65,9 @@ func testAccPreCheckZone(t *testing.T) {
 	// t.Fatal("GANDI_DOMAIN_ID must be set for acceptance tests")
 	// }
 }
+
+func testAccPreCheckZoneVersion(t *testing.T) {
+	if v := os.Getenv("GANDI_ZONE_ID"); v == "" {
+		t.Fatal("GANDI_ZONE_ID must be set for acceptance tests")
+	}
+}

@@ -98,7 +98,7 @@ func CreateZoneVersion(d *schema.ResourceData, meta interface{}) error {
 }
 
 // decode zoneID and version from the resource ID
-func _extractIDs(id string, separator string) (int64, int64) {
+func resourceIDSplit(id string, separator string) (int64, int64) {
 	zoneID, _ := strconv.ParseInt(strings.Split(id, separator)[0], 10, 64)
 	zoneVersion, _ := strconv.ParseInt(strings.Split(id, separator)[1], 10, 64)
 
@@ -137,7 +137,7 @@ func ReadZoneVersion(d *schema.ResourceData, meta interface{}) error {
 	client := getZoneVersionClient(meta)
 
 	// Parse out version numbers from the resource ID
-	zoneID, zoneVersion := _extractIDs(d.Id(), "_")
+	zoneID, zoneVersion := resourceIDSplit(d.Id(), "_")
 
 	zoneExists, err := CheckZoneVersion(client, zoneID, zoneVersion)
 	if err != nil {
@@ -158,7 +158,7 @@ func DeleteZoneVersion(d *schema.ResourceData, meta interface{}) error {
 
 	log.Printf("[DEBUG] Deleting zone version: %v", d.Id())
 
-	zoneID, zoneVersion := _extractIDs(d.Id(), "_")
+	zoneID, zoneVersion := resourceIDSplit(d.Id(), "_")
 
 	log.Printf("[DEBUG] Deleting zone version: %v", d.Id())
 	success, err := client.Delete(zoneID, zoneVersion)
