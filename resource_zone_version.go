@@ -51,7 +51,7 @@ func UpdateZoneVersion(d *schema.ResourceData, meta interface{}) error {
 }
 
 // func to create version with the specified client
-func _createZoneVersion(client *zoneVersion.Version, zoneID int64, baseVersion int64, zoneVersion int64) (string, error) {
+func createZoneVersion(client *zoneVersion.Version, zoneID int64, baseVersion int64, zoneVersion int64) (string, error) {
 	zoneExist, err := CheckZoneVersion(client, zoneID, zoneVersion)
 	if err != nil {
 		return "", fmt.Errorf("Cannot check zone versions: %v", err)
@@ -82,12 +82,12 @@ func CreateZoneVersion(d *schema.ResourceData, meta interface{}) error {
 	zoneID, _ := strconv.ParseInt(d.Get("zone_id").(string), 10, 64)
 	zoneVersion, _ := strconv.ParseInt(d.Get("zone_version").(string), 10, 64)
 
-	ID, err := _createZoneVersion(client, zoneID, baseVersion, zoneVersion)
+	ID, err := createZoneVersion(client, zoneID, baseVersion, zoneVersion)
 	if err != nil {
-		return nil
+		return fmt.Errorf("Could not create zone version: %v", err)
 	}
 
-	// ID of the resource includes the version
+	// ID of the resource includes the version with format: ZONEID_VERSION
 	// API upon creation does not guarantee the version (not specified as argument)
 	// It allows strict version => id reference to keep track of the resource
 

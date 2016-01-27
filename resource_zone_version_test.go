@@ -27,7 +27,7 @@ func TestAccGandiZoneVersion(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"gandi_zone_version.test", "base_version", "1"),
 					resource.TestCheckResourceAttr(
-						"gandi_zone_version.test", "zone_version", "2"),
+						"gandi_zone_version.test", "zone_version", "3"),
 					resource.TestCheckResourceAttr(
 						"gandi_zone_version.test", "zone_id", zoneID),
 				),
@@ -41,7 +41,7 @@ func testAccCheckGandiZoneVersionExists(n string) resource.TestCheckFunc {
 		rs, ok := s.RootModule().Resources[n]
 
 		if !ok {
-			return fmt.Errorf("Not found: %s", n)
+			return fmt.Errorf("Not found: %s %s", n, rs)
 		}
 
 		if rs.Primary.ID == "" {
@@ -86,6 +86,6 @@ func testAccCheckGandiZoneVersionDestroy(s *terraform.State) error {
 const testGandiZoneVersionConfig = `
 resource "gandi_zone_version" "test" {
 	base_version = 1
-	zone_version = 2
+	zone_version = 3
 	zone_id = "%s"
 }`
