@@ -113,7 +113,7 @@ func CheckZoneVersion(client *zoneVersion.Version, zoneID int64, zoneVersionNumb
 	versions, err := client.List(zoneID)
 
 	if err != nil {
-		return false, fmt.Errorf("Cannot read zone version from: %v", zoneID)
+		return false, fmt.Errorf("Cannot read zone version from: %v: %s", zoneID, err.Error())
 	}
 
 	for _, v := range versions {
