@@ -29,7 +29,7 @@ func resourceRecord() *schema.Resource {
 			},
 			"version": &schema.Schema{
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"type": &schema.Schema{
 				Type:     schema.TypeString,
@@ -99,10 +99,23 @@ func (zr *ZoneRecord) toRecordUpdate() record.RecordUpdate {
 
 // CreateRecord creates new record
 func CreateRecord(d *schema.ResourceData, meta interface{}) error {
+	log.Printf("[DEBUG] Entering CreateRecord")
+	var err error
 	client := getRecordClient(meta)
+	var activeVersion int64
 
 	var zr ZoneRecord
 	zr.Parse(d)
+	if zr.Version == 0 {
+		log.Printf("[DEBUG] Looking for active zone version")
+		version := getZoneVersionClient(meta)
+		_, activeVersion, err = getActiveZoneVersion(meta, zr.Zone)
+		newZoneVersion, err := createZoneVersion(version, zr.Zone, activeVersion, 0)
+		if err != nil {
+			return fmt.Errorf("Could not create new version for record: %v", err)
+		}
+		_, zr.Version = resourceIDSplit(newZoneVersion, "_")
+	}
 
 	log.Printf("[DEBUG] Creating new record from spec: %+v", zr)
 
@@ -114,8 +127,28 @@ func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 	// Success
 	d.SetId(strconv.FormatInt(newRecord.Id, 10))
 	log.Printf("[INFO] Successfully created record: %v", d.Id())
+	log.Printf("[INFO] Active zone version: %v New Zone Version: %v", activeVersion, zr.Version)
+	if activeVersion != 0 {
+		setActiveZoneVersion(meta, zr.Zone, zr.Version)
+	}
 
 	return ReadRecord(d, meta)
+}
+
+func getActiveZoneVersion(meta interface{}, zoneID int64) (string, int64, error) {
+	zone := getZoneClient(meta)
+	zoneInfo, err := zone.Info(zoneID)
+	if err != nil {
+		return "", 0, fmt.Errorf("Cannot get zone info for zone id: %d, %v", zoneID, err)
+	}
+	zoneVersion := strconv.FormatInt(zoneInfo.Version, 10)
+	return zoneVersion, zoneInfo.Version, nil
+}
+
+func setActiveZoneVersion(meta interface{}, zoneID int64, version int64) error {
+	client := getZoneVersionClient(meta)
+	_, err := client.Set(zoneID, version)
+	return err
 }
 
 // GetRecord returns record if exist in specified zone/version
@@ -159,10 +192,19 @@ func CheckRecord(client *record.Record, zoneID interface{}, zoneVersion interfac
 
 // ReadRecord fetches configuration
 func ReadRecord(d *schema.ResourceData, meta interface{}) error {
+	log.Printf("[DEBUG] Entering ReadRecord")
+	var err error
 	client := getRecordClient(meta)
 
 	zoneID := d.Get("zone_id")
 	zoneVersion := d.Get("version")
+	// if the zoneVersion is nil, get the active version for the zone
+	if zoneVersion == "" {
+		log.Printf("[DEBUG] Looking for active version of zone %v", zoneID)
+		zid, _ := strconv.ParseInt(zoneID.(string), 10, 64)
+		zoneVersion, _, err = getActiveZoneVersion(meta, zid)
+		log.Printf("[DEBUG] Found active version of zone %v: %#v", zoneID, zoneVersion)
+	}
 	recordID := d.Id()
 
 	log.Printf("[DEBUG] Reading records from zone: %v version: %v", zoneID, zoneVersion)
@@ -198,6 +240,7 @@ func ReadRecord(d *schema.ResourceData, meta interface{}) error {
 
 // UpdateRecord updates record in zone/version according to the new spec
 func UpdateRecord(d *schema.ResourceData, meta interface{}) error {
+	log.Printf("[DEBUG] Entering UpdateRecord")
 	client := getRecordClient(meta)
 
 	var zr ZoneRecord
@@ -217,6 +260,7 @@ func UpdateRecord(d *schema.ResourceData, meta interface{}) error {
 
 //DeleteRecord deletes records from zone version by id
 func DeleteRecord(d *schema.ResourceData, meta interface{}) error {
+	log.Printf("[DEBUG] Entering DeleteRecord")
 	client := getRecordClient(meta)
 
 	var zr ZoneRecord
