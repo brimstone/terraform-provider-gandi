@@ -241,20 +241,55 @@ func ReadRecord(d *schema.ResourceData, meta interface{}) error {
 // UpdateRecord updates record in zone/version according to the new spec
 func UpdateRecord(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[DEBUG] Entering UpdateRecord")
+	var err error
+	var activeVersion int64
 	client := getRecordClient(meta)
 
 	var zr ZoneRecord
 	zr.Parse(d)
+	log.Printf("[DEBUG] FINDME ZoneRecord: %#v", zr)
+	if zr.Version == 0 {
+		log.Printf("[DEBUG] Looking for active zone version")
+		version := getZoneVersionClient(meta)
+		_, activeVersion, err = getActiveZoneVersion(meta, zr.Zone)
+		newZoneVersion, err := createZoneVersion(version, zr.Zone, activeVersion, 0)
+		if err != nil {
+			return fmt.Errorf("Could not create new version for record: %v", err)
+		}
+		_, zr.Version = resourceIDSplit(newZoneVersion, "_")
+		// Find old record in active version by name, type, value
+		oldRecords, err := client.List(zr.Zone, activeVersion)
+		var oldRecord *record.RecordInfo
+		for _, r := range oldRecords {
+			if r.Id == zr.Id {
+				oldRecord = r
+				break
+			}
+		}
+		// FIXME check for nil oldRecord
+		newRecords, err := client.List(zr.Zone, zr.Version)
+		for _, r := range newRecords {
+			// Find ID in new version by name, type, value
+			if r.Name == oldRecord.Name && r.Type == oldRecord.Type && r.Value == oldRecord.Value {
+				// Fix ID of current zr record
+				zr.Id = r.Id
+				break
+			}
+		}
+	}
 
-	log.Printf("[DEBUG] Updating record: %v", d.Id())
+	log.Printf("[DEBUG] Updating record: %v", zr.Id)
 	//TODO: it returns []*record.RecordInfo. Does the driver update more than 1 record at the time?
-	_, err := client.Update(zr.toRecordUpdate())
+	_, err = client.Update(zr.toRecordUpdate())
 	if err != nil {
 		return fmt.Errorf("Cannot update record: %v", err)
 	}
 
 	// Success
 	log.Printf("[DEBUG] Updated record: %v", zr.Id)
+	if activeVersion != 0 {
+		setActiveZoneVersion(meta, zr.Zone, zr.Version)
+	}
 	return nil
 }
 
@@ -276,7 +311,7 @@ func DeleteRecord(d *schema.ResourceData, meta interface{}) error {
 			return fmt.Errorf("Could not create new version for record: %v", err)
 		}
 		_, zr.Version = resourceIDSplit(newZoneVersion, "_")
-		// FIXME ID needs to also be updated.
+		// ID needs to also be updated.
 		records, err := client.List(zr.Zone, zr.Version)
 		for _, r := range records {
 			if r.Name == zr.Name && r.Type == zr.Type && r.Value == zr.Value {
