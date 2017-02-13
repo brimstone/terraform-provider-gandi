@@ -101,8 +101,8 @@ func (zr *ZoneRecord) toRecordUpdate() record.RecordUpdate {
 func CreateRecord(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[DEBUG] Entering CreateRecord")
 	var err error
-	client := getRecordClient(meta)
 	var activeVersion int64
+	client := getRecordClient(meta)
 
 	var zr ZoneRecord
 	zr.Parse(d)
@@ -261,12 +261,32 @@ func UpdateRecord(d *schema.ResourceData, meta interface{}) error {
 //DeleteRecord deletes records from zone version by id
 func DeleteRecord(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[DEBUG] Entering DeleteRecord")
+	var err error
+	var activeVersion int64
 	client := getRecordClient(meta)
 
 	var zr ZoneRecord
 	zr.Parse(d)
+	if zr.Version == 0 {
+		log.Printf("[DEBUG] Looking for active zone version")
+		version := getZoneVersionClient(meta)
+		_, activeVersion, err = getActiveZoneVersion(meta, zr.Zone)
+		newZoneVersion, err := createZoneVersion(version, zr.Zone, activeVersion, 0)
+		if err != nil {
+			return fmt.Errorf("Could not create new version for record: %v", err)
+		}
+		_, zr.Version = resourceIDSplit(newZoneVersion, "_")
+		// FIXME ID needs to also be updated.
+		records, err := client.List(zr.Zone, zr.Version)
+		for _, r := range records {
+			if r.Name == zr.Name && r.Type == zr.Type && r.Value == zr.Value {
+				zr.Id = r.Id
+				break
+			}
+		}
+	}
 
-	log.Printf("[DEBUG] Deleting record: %v", d.Id())
+	log.Printf("[DEBUG] Deleting record: %v", zr.Id)
 	success, err := client.Delete(zr.Zone, zr.Version, zr.Id)
 	if err != nil {
 		return fmt.Errorf("Cannot delete record: %v", err)
@@ -275,6 +295,12 @@ func DeleteRecord(d *schema.ResourceData, meta interface{}) error {
 	if success {
 		log.Printf("[DEBUG] Deleted record: %v", zr.Id)
 		d.SetId("")
+	} else {
+		log.Printf("[DEBUG] Failure Deleting record: %v %#v", zr.Id, err)
+	}
+	log.Printf("[INFO] Active zone version: %v New Zone Version: %v", activeVersion, zr.Version)
+	if activeVersion != 0 {
+		setActiveZoneVersion(meta, zr.Zone, zr.Version)
 	}
 
 	return err
